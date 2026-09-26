@@ -1,0 +1,17 @@
+{
+  "_comment": "示例插件单独一份配置：上游 qihe-box 的 tsconfig.node.json 把 src/plugins/hello/** 排除了，所以全产品仓从不检查它。本仓反过来必须检查——教学样板写错，第一次照着做的人会先踩坑。",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "types": ["node"],
+    "jsx": "preserve",
+    "jsxImportSource": "solid-js",
+    "noEmit": true,
+    "isolatedModules": true
+  },
+  "include": ["src/plugins/hello/src/**/*"]
+}

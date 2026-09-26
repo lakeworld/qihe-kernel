@@ -1,0 +1,23 @@
+{
+  "name": "qihe-kernel",
+  "version": "0.1.0",
+  "description": "启禾文件管理（qihe-box）的插件宿主内核与插件协议——公开可审计的那一层",
+  "license": "Apache-2.0",
+  "type": "module",
+  "private": false,
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.hello.json --noEmit",
+    "build:hello": "node scripts/build-hello-plugin.mjs",
+    "test": "vitest run tests/unit/networkEgress.test.ts",
+    "check:leaks": "node scripts/check-no-secrets.mjs --all",
+    "check:leaks:history": "node scripts/check-no-secrets.mjs --history"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "esbuild": "^0.25.12",
+    "electron": "^31.7.7",
+    "solid-js": "^1.9.14",
+    "typescript": "^5.9.3",
+    "vitest": "^3.0.0"
+  }
+}
