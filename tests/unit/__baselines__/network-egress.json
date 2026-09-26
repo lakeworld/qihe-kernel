@@ -1,0 +1,81 @@
+{
+  "_readme": [
+    "宿主对外出口门禁的基线（tests/unit/networkEgress.test.ts 读取；同一份文件随白名单导出到公开内核仓 lakeworld/qihe-kernel）。",
+    "allowedHosts / benignHosts 是人工权威：重生成只会刷新清单段，遇到未登记主机直接拒绝写回。",
+    "新增对外出口 = 先改 PRIVACY.md / README 的「唯一目的地」口径并由用户拍板，再 BREAK 登记；顺序反过来说明在想绕门禁。"
+  ],
+  "_regen": "NETWORK_EGRESS_UPDATE=1（别名 UPDATE_NETWORK_EGRESS=1）npx vitest run tests/unit/networkEgress.test.ts",
+  "schema": 1,
+  "_generatedIn": "full",
+  "allowedHosts": [
+    "www.qihebook.cloud"
+  ],
+  "benignHosts": {
+    "www.w3.org": "SVG/MathML 命名空间字面量（xmlns=\"http://www.w3.org/2000/svg\"），浏览器不回取"
+  },
+  "observedHosts": [
+    "www.qihebook.cloud",
+    "www.w3.org"
+  ],
+  "literalDomainFiles": {
+    "src/main/core/updatePlan.ts": 1,
+    "src/main/updater.ts": 1,
+    "src/renderer/src/pages/Profile.tsx": 3
+  },
+  "inventory": {
+    "networkExits": [
+      "src/main/account.ts:306 | fetchImpl",
+      "src/main/account.ts:403 | fetchImpl",
+      "src/main/account.ts:572 | fetchImpl",
+      "src/main/plugins/catalog.ts:325 | fetchImpl",
+      "src/main/plugins/catalog.ts:448 | fetchImpl",
+      "src/main/plugins/download.ts:104 | fetchImpl",
+      "src/main/plugins/encryption.ts:268 | fetchImpl",
+      "src/main/plugins/host.ts:671 | fetchImpl",
+      "src/main/protocol.ts:184 | net.fetch",
+      "src/main/updater.ts:83 | fetchImpl"
+    ],
+    "urlConstructions": [
+      "src/main/clipboardParse.ts:25 | newURL",
+      "src/main/core/apiBase.ts:57 | newURL",
+      "src/main/core/apiBase.ts:75 | newURL",
+      "src/main/plugins/download.ts:52 | newURL",
+      "src/main/plugins/download.ts:60 | newURL",
+      "src/main/protocol.ts:230 | newURL"
+    ],
+    "fetchBindings": [
+      "src/main/account.ts:292 | fetch-ref",
+      "src/main/account.ts:398 | fetch-ref",
+      "src/main/account.ts:560 | fetch-ref",
+      "src/main/plugins/catalog.ts:321 | fetch-ref",
+      "src/main/plugins/catalog.ts:447 | fetch-ref",
+      "src/main/plugins/download.ts:103 | fetch-ref",
+      "src/main/plugins/encryption.ts:253 | fetch-ref",
+      "src/main/plugins/encryption.ts:300 | fetch-ref",
+      "src/main/plugins/host.ts:663 | fetch-ref",
+      "src/main/updater.ts:78 | fetch-ref"
+    ]
+  },
+  "uploadPrimitives": {
+    "policy": "zero",
+    "patterns": [
+      "multipart",
+      "FormData",
+      "putObject",
+      "presigned",
+      "s3",
+      "appendChild",
+      "upload"
+    ],
+    "hits": []
+  },
+  "stats": {
+    "scannedTsFiles": 215,
+    "scannedMainFiles": 71,
+    "hosts": 2,
+    "networkExits": 10,
+    "urlConstructions": 6,
+    "fetchBindings": 10,
+    "uploadHits": 0
+  }
+}
