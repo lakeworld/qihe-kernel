@@ -31,7 +31,7 @@
       "src/main/plugins/catalog.ts:448 | fetchImpl",
       "src/main/plugins/download.ts:104 | fetchImpl",
       "src/main/plugins/encryption.ts:268 | fetchImpl",
-      "src/main/plugins/host.ts:671 | fetchImpl",
+      "src/main/plugins/host.ts:678 | fetchImpl",
       "src/main/protocol.ts:184 | net.fetch",
       "src/main/updater.ts:83 | fetchImpl"
     ],
@@ -52,7 +52,7 @@
       "src/main/plugins/download.ts:103 | fetch-ref",
       "src/main/plugins/encryption.ts:253 | fetch-ref",
       "src/main/plugins/encryption.ts:300 | fetch-ref",
-      "src/main/plugins/host.ts:663 | fetch-ref",
+      "src/main/plugins/host.ts:670 | fetch-ref",
       "src/main/updater.ts:78 | fetch-ref"
     ]
   },
@@ -70,8 +70,8 @@
     "hits": []
   },
   "stats": {
-    "scannedTsFiles": 215,
-    "scannedMainFiles": 71,
+    "scannedTsFiles": 223,
+    "scannedMainFiles": 72,
     "hosts": 2,
     "networkExits": 10,
     "urlConstructions": 6,

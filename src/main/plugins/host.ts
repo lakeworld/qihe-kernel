@@ -5,6 +5,8 @@
  * - events：on 订阅宿主事件白名单（workspaceChanged/importComplete/certExpiring/updateAvailable），
  *   emit 通道强校验以本插件 ipcPrefix 开头（防冒充本体事件，PLUGIN.md §2.6）
  * - workspace/dialog/notify：受限能力（由装配层注入实现，不放开任意路径读写与 shell）
+ *   （2026-10-12 B18：workspace 域加 permissions.workspace 位——list()（最近工作区枚举）按位放行，
+ *    未声明抛 PERMISSION_DENIED；currentPath/defaultPath 恒可用不受门控）
  * - account（v2.5 增量 PLAN §3.2）：装配层注入 AccountService 同步接口；manifest.permissions.account !== true
  *   时注入空实现（恒 null / false）
  * - files（v2.5 增量 PLAN §3.3）：工作区受限读写（readText ≤10MB / readBuffer ≤50MB / writeExport ≤50MB），
@@ -151,6 +153,11 @@ export interface PluginHostDeps {
   bus: HostEventBus
   log: (level: 'info' | 'warn' | 'error', msg: string) => void
   workspace: { currentPath(): string | null; list(): unknown; /** v2.6.1：默认工作区持久指针（装配层从 userData/settings.json 读入）；漏接由本层兜底 null */ defaultPath?(): string | null }
+  /** manifest.permissions.workspace === true 时才接通 host.workspace.list()（最近工作区枚举）。
+   *  2026-10-12（B18）：**可选 + 默认拒绝**——漏接/未声明一律不放行（fail-closed：隐私位向安全侧倒）。
+   *  currentPath / defaultPath 不受门控（窄暴露面恒可用，见 types.ts workspace 域注释）。
+   *  声明后管理页可见（renderer 展示汇总），与 customers/suppliers/share 同一装配层门控模式。 */
+  workspaceAccess?: boolean
   /** host.dialog 装配层注入（v2.6.1：+ 多选 openFiles——三档共用「取消回空值、失败抛带 code 错误」语义，
    *  实现住 ./dialog.ts，装配层在 ipc.ts 接线） */
   dialog: { openFile(opts: unknown): Promise<string>; openFiles(opts: unknown): Promise<string[]>; openDirectory(opts: unknown): Promise<string> }
@@ -709,10 +716,17 @@ export async function createPluginHost(deps: PluginHostDeps, limits?: StorageLim
     storage,
     events,
     // v2.6.1：defaultPath 包一层——恒挂该函数（旧依赖对象没有它时兜底 null，漏接不炸），
-    // 且把空串归一为 null（契约承诺 string | null，不留空串这条二义）。currentPath/list 原样透传。
+    // 且把空串归一为 null（契约承诺 string | null，不留空串这条二义）。currentPath 原样透传。
+    // 2026-10-12（B18）：list 按 permissions.workspace 位放行——未声明 → PERMISSION_DENIED
+    // （默认关；照 customers/suppliers/share 先例，读方法也显式拒绝，不静默恒可用）。
     workspace: {
       currentPath: deps.workspace.currentPath,
-      list: deps.workspace.list,
+      list:
+        deps.workspaceAccess === true
+          ? deps.workspace.list
+          : () => {
+              throw permissionDenied('workspace')
+            },
       defaultPath: () => deps.workspace.defaultPath?.() || null,
     },
     dialog: deps.dialog,

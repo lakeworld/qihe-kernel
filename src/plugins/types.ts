@@ -55,6 +55,11 @@ export interface PluginManifest {
     suppliers?: boolean
     /** share 能力域（v2.5.1 A2，内部设计文档 §3.2）：声明后 host.share.* 可用；未声明 → PERMISSION_DENIED */
     share?: boolean
+    /** workspace 能力域（2026-10-12 B18）：声明后 host.workspace.list()（最近工作区枚举）放行；
+     *  未声明 → list() 抛 PERMISSION_DENIED（默认关，照 customers/suppliers/share 装配层门控先例）。
+     *  currentPath() / defaultPath?.() **不受门控恒可用**——窄暴露面是插件基本能力，
+     *  要收的正是「用户全部最近工作区绝对路径」那张清单（隐私面）。 */
+    workspace?: boolean
   }
   /** 激活事件（惰性加载的触发点补充）：onView/onCommand 由 pages/commands 声明自动推断，无需手写；
    *  仅事件订阅类/后台类插件必须显式声明，否则永远不激活（见 PLUGIN.md §2.3） */
@@ -272,12 +277,11 @@ export interface PluginHost {
   workspace: {
     currentPath(): string | null
     /**
-     * @deprecated v2.6.4：**无权限位、恒可用**——返回全部「最近工作区」的绝对路径（`WorkspaceInfo[]`），
-     * 插件据此可枚举用户机器上的目录，而用户在管理页看不到任何声明、也无从关闭；宿主本体与五个
-     * 官方插件**全生态零调用**。新代码改用 `currentPath()`（当前工作区）或 `defaultPath?.()`
-     * （默认指针）——两者暴露面都比「最近列表」窄。
-     * **仍可用、不删**（只增不删红线：废弃成员至少存活一个宿主大版本）；收口方式 = 后续批加
-     * `permissions.workspace` 位（默认关、声明后管理页可见），届时本方法改为按位放行。
+     * @deprecated v2.6.4：返回全部「最近工作区」绝对路径（`WorkspaceInfo[]`）——插件据此可枚举
+     * 用户机器上的目录；宿主本体与五个官方插件**全生态零调用**。新代码改用 `currentPath()` 或
+     * `defaultPath?.()`（暴露面更窄，且不受权限位门控）。**仍可用、不删**（只增不删红线）。
+     * 2026-10-12（B18）：`permissions.workspace !== true` → 抛 `PERMISSION_DENIED`（默认关，
+     * 照 customers/suppliers/share 先例）；声明后按位放行、管理页可见。
      */
     list(): unknown
     /**
@@ -707,7 +711,8 @@ export function validateManifest(input: unknown): { ok: boolean; errors: string[
       if (permissions.account !== undefined && typeof permissions.account !== 'boolean') {
         errors.push('permissions.account 须为布尔值')
       }
-      // —— 规则 ⑩（v2.5.1 A1/A2 + v2.5.4 弹一 C-2，内部设计文档 §3.1/§3.2）：customers / suppliers / share 布尔校验 ——
+      // —— 规则 ⑩（v2.5.1 A1/A2 + v2.5.4 弹一 C-2 + 2026-10-12 B18，内部设计文档 §3.1/§3.2）：
+      //    customers / suppliers / share / workspace 布尔校验 ——
       if (permissions.customers !== undefined && typeof permissions.customers !== 'boolean') {
         errors.push('permissions.customers 须为布尔值')
       }
@@ -717,6 +722,10 @@ export function validateManifest(input: unknown): { ok: boolean; errors: string[
       }
       if (permissions.share !== undefined && typeof permissions.share !== 'boolean') {
         errors.push('permissions.share 须为布尔值')
+      }
+      // 2026-10-12（B18）：permissions.workspace 位——host.workspace.list() 按位放行的开关
+      if (permissions.workspace !== undefined && typeof permissions.workspace !== 'boolean') {
+        errors.push('permissions.workspace 须为布尔值')
       }
     }
   }

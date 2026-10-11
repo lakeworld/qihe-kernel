@@ -833,14 +833,17 @@ export interface PluginInfo {
     /** 「打开本插件页面」命令（manifest commands[].openPage 镜像；宿主改走交接+导航，不执行回调） */
     openPage?: string
   }>
-  /** 声明式权限（仅展示，v1 不强制拦截，见 PLUGIN.md §2.6；account 为 v2.5 增量，customers/share 为 v2.5.1 A 流增量） */
+  /** 声明式权限（仅展示，v1 不强制拦截，见 PLUGIN.md §2.6；account 为 v2.5 增量，customers/share 为 v2.5.1 A 流增量，
+   *  suppliers 为 v2.5.4 增量，workspace 为 2026-10-12 B18 增量——后两位此前漏镜像，渲染层展示汇总看不见） */
   permissions?: {
     network?: string[]
     clipboard?: boolean
     notification?: boolean
     account?: boolean
     customers?: boolean
+    suppliers?: boolean
     share?: boolean
+    workspace?: boolean
   }
   /** 最近一次激活耗时（毫秒，管理页可观测） */
   activationMs?: number

@@ -94,6 +94,8 @@ export interface PluginManifest {
     clipboard?: boolean
     notification?: boolean
     account?: boolean              // 账号能力（v2.5 增量）：声明后 host.account 返回真实登录态；未声明恒 null
+    workspace?: boolean            // workspace 能力域（2026-10-12 B18）：声明后 host.workspace.list()（最近工作区枚举）放行；
+                                   // 未声明 → list() 抛 PERMISSION_DENIED（默认关）。currentPath()/defaultPath?() 恒可用不受门控
   }
   activation?: Array<'onStartupFinished' | `onEvent:${string}`>  // 见 §四 激活触发
   pages?: Array<{
@@ -138,7 +140,7 @@ export interface PluginManifest {
 6. `permissions.network` 域名须为合法主机名或 `'*'`（`'*'` 须附说明，管理页醒目展示） <!-- contract:v1:manifest.rule6 -->
 7. `activation` 中 `onEvent:<channel>` 的 channel 必须以本插件 `ipcPrefix` 开头 <!-- contract:v1:manifest.rule7 -->
 8. `syncScope` 仅支持缺省（默认 `'local'`）、`'global'` 或 `'local'`；其余值 → broken（v2.5 增量） <!-- contract:v1:manifest.rule8 -->
-9. `permissions` 子字段类型校验：`account` / `clipboard` / `notification` 布尔、`network` 字符串数组或 `'*'`；非法 → broken（v2.5 增量） <!-- contract:v1:manifest.rule9 -->
+9. `permissions` 子字段类型校验：`account` / `clipboard` / `notification` / `workspace` 布尔、`network` 字符串数组或 `'*'`；非法 → broken（v2.5 增量；`workspace` 为 2026-10-12 B18 增量） <!-- contract:v1:manifest.rule9 -->
 10. `commands[].openPage`（可选）三边校验：非空字符串 / `'/plugin/'` 前缀 / 必须命中本插件 `pages[].path`；非法 → broken（v2.5.9 增量） <!-- contract:v1:manifest.rule10 -->
 
 ---
@@ -226,12 +228,11 @@ export interface PluginHost {
   /** 受限核心能力（白名单，不放开任意文件操作） */
   workspace: {
     currentPath(): string | null
-    /** @deprecated v2.6.4：**无权限位、恒可用**——返回全部「最近工作区」的绝对路径（`WorkspaceInfo[]`），
-     *  插件据此可枚举用户机器上的目录，而用户在管理页看不到任何声明、也无从关闭；宿主本体与五个官方
-     *  插件**全生态零调用**。新代码改用 `currentPath()`（当前工作区）或 `defaultPath?.()`（默认指针）——
-     *  两者暴露面都比「最近列表」窄。
-     *  **仍可用、不删**（只增不删红线：废弃成员至少存活一个宿主大版本）；收口方式 = 后续批加
-     *  `permissions.workspace` 位（默认关、声明后管理页可见），届时本方法改为按位放行。 */
+    /** @deprecated v2.6.4：返回全部「最近工作区」绝对路径（`WorkspaceInfo[]`）——插件据此可枚举
+     *  用户机器上的目录；宿主本体与五个官方插件**全生态零调用**。新代码改用 `currentPath()` 或
+     *  `defaultPath?.()`（暴露面更窄，且不受权限位门控）。**仍可用、不删**（只增不删红线）。
+     *  2026-10-12（B18）：`permissions.workspace !== true` → 抛 `PERMISSION_DENIED`（默认关，
+     *  照 customers/suppliers/share 先例）；声明后按位放行、管理页可见。 */
     list(): unknown
     /** v2.6.1 增量：用户指定的**默认工作区**（「以后启动都打开这个盘」那个指针）。
      *  未设置 → null；已设置的路径**可能暂时失效**（目录被删 / 移动盘未挂载）——此时原样返回该路径，
@@ -329,6 +330,8 @@ export interface PluginHost {
 
 > **host.account.cloudFetch 错误码（v2.5.7 F4a）**：`PERMISSION_DENIED`（未声明 `permissions.account`）/ `NOT_LOGGED_IN`（未登录）/ `NO_SERVER`（未配置服务器地址）/ `INVALID_NAME`（路径非 `/` 开头相对路径）/ `NOT_ALLOWED`（非 `/api/box/*` 或 `/api/ai/*` 前缀）。以上均带 `code` 属性、不计入熔断计数。响应体处理与超时策略由插件侧负责（宿主只负责代签与转发，不解析业务载荷）。
 
+> **host.workspace 权限位（2026-10-12 B18 起，本段是契约）**：`workspace` 域加 `permissions.workspace` 位——**只门控 `list()`**（最近工作区枚举：返回全部「最近工作区」绝对路径，是隐私面）：未声明 → `list()` 抛 `PERMISSION_DENIED`（默认关，与 customers/suppliers/share 同一装配层门控先例，读方法也显式拒绝）；声明后管理页可见、按位放行。**`currentPath()` / `defaultPath?.()` 恒可用不受门控**（窄暴露面是插件基本能力；要收的正是「全部最近工作区」那张清单）。`list()` 仍标 `@deprecated`、仍可用不删（只增不删红线）；新代码改用 `currentPath()` / `defaultPath?.()`。管理页「宿主恒授予（不可声明、不可关闭）」披露行随之改为只披露 currentPath/defaultPath。
+
 > **host.events 投递语义（v2.5.1 起明示）**：宿主事件只投递给**已激活**插件的订阅——事件到达时未激活的插件收不到该次事件。需在某宿主事件到达时必在场的插件：`manifest.activation` 声明 `onEvent:<ipcPrefix>:<channel>`（规则⑦），并在 `activate` 内自检一次当前状态（激活与投递存在时序竞态，触发激活的那次事件可能先于订阅注册到达，不可依赖收到它）。
 > **宿主事件清单**：`workspaceChanged`（工作区切换，payload 为新路径）/ `importComplete`（导入完成）/ `certExpiring`（证书到期）/ `updateAvailable`（发现新版本）/ `accountChanged`（**v2.5.1**：登录/登出成功，payload `{ loggedIn: boolean }`）/ `customerCreated` / `customerUpdated` / `fileArchived`（customers/share 域事件，见 §5.5）/ `supplierCreated` / `supplierUpdated`（suppliers 域事件，v2.5.4 弹一 C-3）。
 > **写路径投递口径（v2.5.7 补丁明示，两域对称）**：客户与供应商的 `create` / `update` / `rename` / `linkRelation`（关联产品集）/ `unlinkRelation` 在**成功路径**均投 `<entity>Created` / `<entity>Updated`（payload `{ name, oldName? }`）；`delete` 与失败/取消路径**不投**。注：供应商两条关联通道在 v2.4.9 打磨 M8「镜像客户」时漏抄了投递，导致依赖关联变化刷新的插件（业务脉络图谱）拿不到信号、只能等重启——v2.5.7 补丁补齐，并加 `tests/unit/ipc-entity-events.test.ts`（闭源宿主仓） 钉住两域对称（客户侧作对照基准）。插件侧不要假设"任何数据变化都有事件"：报价/发票/入库/产品集 四域当前**无事件通道**，兜底口径 = 进页重拉 + 自定 TTL（见插件侧 PLAN 契约 11）。
@@ -409,7 +412,7 @@ export interface PluginCatalogEntry {
   images?: string[]     // 截图 URL（https；宿主读侧自 v2.6.1 起，最多收 3 张、坏项逐条丢，全坏则整字段缺省）。**宿主读侧已随 v2.6.1 发布（2026-09-26）**；服务端目录面已上线——条目里有没有这些字段以官方目录实发为准，插件按能力探测兜底
   detail?: string       // 功能详情长文（纯文本可含换行；宿主读侧自 v2.6.1 起。长度上限在服务端写入侧把关，宿主不截断）。**宿主读侧已随 v2.6.1 发布（2026-09-26）**；服务端目录面已上线——条目里有没有这些字段以官方目录实发为准，插件按能力探测兜底
   source?: string       // 来源描述（缺省「启禾官方」）
-  permissions?: { network?: string[]; clipboard?: boolean; notification?: boolean; account?: boolean; customers?: boolean; share?: boolean }  // permissions 摘要（仅展示）
+  permissions?: { network?: string[]; clipboard?: boolean; notification?: boolean; account?: boolean; customers?: boolean; suppliers?: boolean; workspace?: boolean; share?: boolean }  // permissions 摘要（仅展示）
   versions: PluginCatalogVersion[]              // 版本列表（服务端全量，宿主不裁剪）
   compatible: boolean   // 宿主派生：存在与当前宿主兼容的版本
   selected?: PluginCatalogVersion               // 宿主派生：选中可安装版本（最新兼容版本）
@@ -1071,4 +1074,4 @@ window.qihebox.ui.openEntity(
 
 ---
 
-*协议版本：v1（API_VERSION = 1，随 v2.5 宿主生效；2026-08-14 增量：syncScope / permissions.account / host.account / host.files / host.entitlement / 侧载收紧，均为向后兼容新增；2026-09-22 补：§二/§八 加「更新即重启」生效口径——非协议变更，仅承诺口径补全；2026-09-23 补：§5.6 `listTree` 条目形状钉死（只认 `kind`）、`STALE` 抛错口径钉死、§三 规则计数勘正——均为口径澄清，非协议变更；**同日 v2.6 批 2 实装**：§5.3 `catalog()` + `PluginCatalogEntry` 形状 + `install({ downloadUrl, sha256 })` 双形态与目录/下载链错误码、§二 安装链、§三.4 选版口径、§5.3 `app.relaunch()`——`catalog()` / 官方索引安装形态从「当前未实现」转为实装口径；同日 **v2.6 批 3 实装**：§一 插件分发口径改写（原「安装包不内置任何插件」→ 支持官方预装）+ §六 新增「官方预装（离线可用）」段——非协议变更（无新字段、无新通道、无新 IPC），仅分发形态与承诺口径补全）；2026-09-23 勘正（2.6 放行审查轮 2）：§〇「权益标记」措辞改为与实现一致（宿主零门槛校验，闸在云端取钥面）、§六 补「取钥失败的用户可见口径」（原因 + 下一步，fail-closed 不变）——仅口径澄清，非协议变更）；**2026-09-24 v2.6.1 增量**：§5.1 `host.workspace.defaultPath?()`（默认工作区**只读**持久指针，可选成员 + 能力探测，零权限位）——向后兼容新增，`API_VERSION` 仍 1，`currentPath()` / `list()` 签名与行为零改动；**2026-09-25 v2.6.1 增量（B8）**：§5.1 `host.dialog.openFiles?()`（多选，上限 200 宿主截断，可选成员 + 能力探测）+ §5.1 host.dialog 三条语义（取消≠失败 / 裸值非信封 / 只增不改）明写 + `getPathForFile` 升为稳定 util 契约（实现零变更）——同为向后兼容新增，`openFile` / `openDirectory` 形状与取消语义一字未动。**2026-09-26 v2.6.1 增量（B14）**：§5.1 `host.images?()`（宿主内置图像引擎口：读源 → 内存变换 → 返回编码字节，**宿主不写盘**；顺序 crop → rotate → resize；七错误码 `IMAGES_*`；可选成员 + 能力探测）——向后兼容新增，`API_VERSION` 仍 1，既有成员零改动。**2026-09-25 展示三字段增量**：§5.3 目录条目新增展示三字段 `images?` / `detail?` / 每版 `releaseNotes?`（官方目录 → 管理页「详情」弹窗：截图可翻、功能介绍、按版更新说明）——同为向后兼容新增，`API_VERSION` 仍 1，承重字段判据一字未动，新增的「宽容只限展示位」边界由单测分两头钉住。**v2.6.1 已于 2026-09-26 发布**（展示三字段随它落地：宿主读侧 + 客户端详情面；服务端目录面已上线），宿主能力探测为准；**2026-09-27 v2.6.4 标注**：§5.1 `host.workspace.list()` 标 `@deprecated`——无权限位、恒可用，回全部「最近工作区」绝对路径，宿主本体与五个官方插件全生态零调用；**仍可用、不删**（只增不删红线），收口方式 = 后续批加 `permissions.workspace` 位按位放行，同时管理页新增「宿主恒授予（不可声明、不可关闭）」披露行。非协议变更：签名与行为一字未动，`API_VERSION` 仍 1） · 本文档在公开仓库维护，契约修订与实现同步*
+*协议版本：v1（API_VERSION = 1，随 v2.5 宿主生效；2026-08-14 增量：syncScope / permissions.account / host.account / host.files / host.entitlement / 侧载收紧，均为向后兼容新增；2026-09-22 补：§二/§八 加「更新即重启」生效口径——非协议变更，仅承诺口径补全；2026-09-23 补：§5.6 `listTree` 条目形状钉死（只认 `kind`）、`STALE` 抛错口径钉死、§三 规则计数勘正——均为口径澄清，非协议变更；**同日 v2.6 批 2 实装**：§5.3 `catalog()` + `PluginCatalogEntry` 形状 + `install({ downloadUrl, sha256 })` 双形态与目录/下载链错误码、§二 安装链、§三.4 选版口径、§5.3 `app.relaunch()`——`catalog()` / 官方索引安装形态从「当前未实现」转为实装口径；同日 **v2.6 批 3 实装**：§一 插件分发口径改写（原「安装包不内置任何插件」→ 支持官方预装）+ §六 新增「官方预装（离线可用）」段——非协议变更（无新字段、无新通道、无新 IPC），仅分发形态与承诺口径补全）；2026-09-23 勘正（2.6 放行审查轮 2）：§〇「权益标记」措辞改为与实现一致（宿主零门槛校验，闸在云端取钥面）、§六 补「取钥失败的用户可见口径」（原因 + 下一步，fail-closed 不变）——仅口径澄清，非协议变更）；**2026-09-24 v2.6.1 增量**：§5.1 `host.workspace.defaultPath?()`（默认工作区**只读**持久指针，可选成员 + 能力探测，零权限位）——向后兼容新增，`API_VERSION` 仍 1，`currentPath()` / `list()` 签名与行为零改动；**2026-09-25 v2.6.1 增量（B8）**：§5.1 `host.dialog.openFiles?()`（多选，上限 200 宿主截断，可选成员 + 能力探测）+ §5.1 host.dialog 三条语义（取消≠失败 / 裸值非信封 / 只增不改）明写 + `getPathForFile` 升为稳定 util 契约（实现零变更）——同为向后兼容新增，`openFile` / `openDirectory` 形状与取消语义一字未动。**2026-09-26 v2.6.1 增量（B14）**：§5.1 `host.images?()`（宿主内置图像引擎口：读源 → 内存变换 → 返回编码字节，**宿主不写盘**；顺序 crop → rotate → resize；七错误码 `IMAGES_*`；可选成员 + 能力探测）——向后兼容新增，`API_VERSION` 仍 1，既有成员零改动。**2026-09-25 展示三字段增量**：§5.3 目录条目新增展示三字段 `images?` / `detail?` / 每版 `releaseNotes?`（官方目录 → 管理页「详情」弹窗：截图可翻、功能介绍、按版更新说明）——同为向后兼容新增，`API_VERSION` 仍 1，承重字段判据一字未动，新增的「宽容只限展示位」边界由单测分两头钉住。**v2.6.1 已于 2026-09-26 发布**（展示三字段随它落地：宿主读侧 + 客户端详情面；服务端目录面已上线），宿主能力探测为准；**2026-09-27 v2.6.4 标注**：§5.1 `host.workspace.list()` 标 `@deprecated`——无权限位、恒可用，回全部「最近工作区」绝对路径，宿主本体与五个官方插件全生态零调用；**仍可用、不删**（只增不删红线），收口方式 = 后续批加 `permissions.workspace` 位按位放行，同时管理页新增「宿主恒授予（不可声明、不可关闭）」披露行。非协议变更：签名与行为一字未动，`API_VERSION` 仍 1） · **2026-10-12 B18 增量（收口落地）**：`permissions.workspace` 位上台——`list()` 改为按位放行（未声明 → `PERMISSION_DENIED`，默认关；`currentPath()` / `defaultPath?.()` 恒可用不受门控），管理页恒授予披露行同步收窄为 currentPath/defaultPath，目录/已装两处权限摘要补 `suppliers`（v2.5.4 起漏显示）与 `workspace` 两分支。向后兼容新增（新 manifest 字段可选、旧插件不声明即走默认关；唯一行为变化 = 零调用方的 `list()` 从恒可用变为按位放行，正是 v2.6.4 承诺的收口路径），`API_VERSION` 仍 1 · 本文档在公开仓库维护，契约修订与实现同步*
