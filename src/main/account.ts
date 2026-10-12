@@ -30,6 +30,8 @@ const HEARTBEAT_INTERVAL_MS = 60 * 60 * 1000
 const LOGIN_TIMEOUT_MS = 15_000
 /** 单次心跳请求上限（v2.5.3 T4） */
 const HEARTBEAT_TIMEOUT_MS = 10_000
+/** 全局撤销那一枪的上限（v2.6.8 S5.5）：比心跳短——登出流程里用户正等着，5s 拿不到就放弃 */
+const LOGOUT_REVOKE_TIMEOUT_MS = 5_000
 /**
  * 设备标识文件的内容判据（v2.6.7 车 0）：只认一枚 UUID。
  * 文件在人手里（`~/.qihe/device-id`，可 cat 可改），拿到什么都当成自己的设备身份往服务端报
@@ -492,11 +494,21 @@ export class AccountService {
     return r.ok ? { ok: true } : { ok: false, error: r.error }
   }
 
-  async logout(): Promise<void> {
+  /**
+   * 登出。`opts.revokeAll` = 渲染层登出确认框里「同时让其它设备退出登录」那一勾的现值
+   * （v2.6.8 S5.5，2026-09-29 卡 B：显式勾选才全局撤销）。
+   *
+   * 顺序（卡 §四-3）：stopHeartbeat 之后、remove() 之前打那一枪——心跳已停（不会在撤销后
+   * 又拿旧 token 去打一发 401），账号文件还在（revokeServerToken 要从盘上读 token）。
+   * **任何失败都吞**：404 / 断网 / 服务端没部署这个端点 ⇒ 本机登出照旧成功。这一枪是
+   * "顺手能要到的出路"，不是登出的前置条件——让它失败把本机登出也带走才是真缺陷。
+   */
+  async logout(opts?: { revokeAll?: boolean }): Promise<void> {
     this.stopHeartbeat()
     this.sessionGen += 1 // 登出即换代：在途心跳结果作废
     this.currentBeatController?.abort()
     this.currentBeatController = null
+    if (opts?.revokeAll === true) await this.revokeServerToken()
     try {
       await this.remove()
     } catch (err) {
@@ -507,6 +519,40 @@ export class AccountService {
     // v2.5：登出清空 token 缓存
     this.tokenCache = null
     this.loggedInCache = false
+  }
+
+  /**
+   * v2.6.8 S5.5（卡 B）：全局撤销那一枪——`POST {baseUrl}/api/box/logout`。
+   * 服务端动作只有一个：轮转该 users 记录的 tokenKey ⇒ 该账号**所有已签 JWT 立即失效**
+   * （PocketBase 原生机制：JWT 签名键 = tokenKey + 集合 secret）。粒度是账号不是设备：
+   * 网页端与另外两台 box 一视同仁，这是勾选文案说清的代价，不是疏漏。
+   *
+   * 为什么在 account.ts 里而不是新开一个模块：这一枪的全部输入（baseUrl / token /
+   * fetchImpl / 日志）都是本类的注入依赖，另起一个模块只会多一处要同步的装配面。
+   * 网络出口仍只到注入的 baseUrl（不新增出口主机，networkEgress 门禁的面不变）。
+   */
+  private async revokeServerToken(): Promise<void> {
+    const acc = this.load()
+    if (!acc || !this.deps.baseUrl) return // 未登录 / 没配服务器：无从撤销，也无需撤销
+    const fetchImpl = this.deps.fetchImpl ?? fetch
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), LOGOUT_REVOKE_TIMEOUT_MS)
+    try {
+      const res = await fetchImpl(`${this.deps.baseUrl}/api/box/logout`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${acc.token}` },
+        signal: controller.signal,
+      })
+      if (!res.ok) {
+        // 未部署（404）/ 服务端错误：照旧登出，只留一条日志供排查
+        log(this.deps, 'warn', `全局撤销未生效（HTTP ${res.status}），本机登出照常完成`)
+      }
+    } catch (err) {
+      // 断网 / 超时 abort：同上——吞掉，本机登出不受影响
+      log(this.deps, 'warn', `全局撤销请求失败：${String(err)}`)
+    } finally {
+      clearTimeout(timer)
+    }
   }
 
   /** v2.5（PLAN §3.2）：同步返回 token 内存缓存（登录态读盘时写入；未登录 → null） */

@@ -24,9 +24,10 @@
   },
   "inventory": {
     "networkExits": [
-      "src/main/account.ts:306 | fetchImpl",
-      "src/main/account.ts:403 | fetchImpl",
-      "src/main/account.ts:572 | fetchImpl",
+      "src/main/account.ts:308 | fetchImpl",
+      "src/main/account.ts:405 | fetchImpl",
+      "src/main/account.ts:541 | fetchImpl",
+      "src/main/account.ts:618 | fetchImpl",
       "src/main/plugins/catalog.ts:325 | fetchImpl",
       "src/main/plugins/catalog.ts:448 | fetchImpl",
       "src/main/plugins/download.ts:104 | fetchImpl",
@@ -44,9 +45,10 @@
       "src/main/protocol.ts:230 | newURL"
     ],
     "fetchBindings": [
-      "src/main/account.ts:292 | fetch-ref",
-      "src/main/account.ts:398 | fetch-ref",
-      "src/main/account.ts:560 | fetch-ref",
+      "src/main/account.ts:294 | fetch-ref",
+      "src/main/account.ts:400 | fetch-ref",
+      "src/main/account.ts:537 | fetch-ref",
+      "src/main/account.ts:606 | fetch-ref",
       "src/main/plugins/catalog.ts:321 | fetch-ref",
       "src/main/plugins/catalog.ts:447 | fetch-ref",
       "src/main/plugins/download.ts:103 | fetch-ref",
@@ -70,12 +72,12 @@
     "hits": []
   },
   "stats": {
-    "scannedTsFiles": 223,
+    "scannedTsFiles": 224,
     "scannedMainFiles": 72,
     "hosts": 2,
-    "networkExits": 10,
+    "networkExits": 11,
     "urlConstructions": 6,
-    "fetchBindings": 10,
+    "fetchBindings": 11,
     "uploadHits": 0
   }
 }
