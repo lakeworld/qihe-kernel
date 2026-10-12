@@ -1035,7 +1035,7 @@ window.qihebox.ui.openEntity(
 |---|---|---|
 | `ai.wb.organize.pickDir` | 无参 → `{ ok, dir }`（取消 = `ok:false` + 空 `dir`） | 无（弹宿主目录框选一个**工作区外**的文件夹，`host.dialog.openDirectory`） |
 | `ai.wb.organize.scan` | `{ dir, limit? }` → `{ ok, dir, files[{name, relPath, absPath, bytes}], found, truncated, skipped, errors, budgetHit, dirsVisited }`（失败 = `{ ok:false, message }`） | 无（只读递归列 jpg/jpeg/png/webp；符号链接不跟随，截断如实报） |
-| `ai.wb.organize.apply` | `{ rows[{name, srcPath, targetSet, newName?}] }` → `{ ok, message?, total, done, failed, results[{ok, name, newPath?/reason?}] }`（逐行成败隔离） | **工作区用户数据区**：`产品集/<集名>/图包/**`——即上段授权例外，受四条自律约束 |
+| `ai.wb.organize.apply` | `{ rows[{name, srcPath, targetSet, newName?, kind?, subFolder?, basis?}], runId? }` → `{ ok, message?, total, done, failed, results[{ok, name, newPath?, dstRel?, reason?, stopped?}], receipt?, receiptError?, stopped? }`（逐行成败隔离；`runId` 为可选增量——递了主进程就按件往 `cloud:wb.progress`（`action:'organizeWrite'`）报落盘进度，取消在行与行之间生效、未复制的行标 `stopped`） | **工作区用户数据区**：`产品集/<集名>/图包/**`——即上段授权例外，受四条自律约束 |
 | `ai.wb.calib` | 一条带字符串 `kind` 的校准记录 → `{ ok }`（`ts` 由主进程现取） | 插件自有区：`userData/plugins/<id>/state/` 的 `ai:calib:v1`（环形封顶 100 条；不出网、不扣额度） |
 
 ---

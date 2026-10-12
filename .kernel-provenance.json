@@ -1,6 +1,6 @@
 {
   "sourceRepo": "qihe-box",
-  "sourceCommit": "4fd281ff872984618c5471f0fafcf4ec8aa23373",
+  "sourceCommit": "f64122d2b8685aff079756092f7cc3c05d78ddcf",
   "sourceBranch": "master",
   "upstream": "https://github.com/lakeworld/qihe-kernel",
   "manifest": "c2ca36a47d87f1be00cd00816d48273bbd9c40265c8e3450b732f8d8c0fe30c3",
@@ -8,7 +8,7 @@
     ".gitignore": "2047767e15fc2490658ca465850e8b9462f3e3b7b3b9e4aa6147349868eed2dd",
     "LICENSE": "d6d078a5c45389d8f648d7a80a9d2142fe72d72fdb9180bd93abc07683c3dd15",
     "README.md": "cded2963146f257ea89c2eef5d53c64d90ff39d91836ce9a67e3ef68720bd56f",
-    "docs/PLUGIN.md": "9ee7486131592247a3ac73425e746f982738140bd0e0b4d04e1916594084a0ad",
+    "docs/PLUGIN.md": "b134088a22a5fff0dee63a170071a18589b1736e6c0fe42d76a0284e8a2d548d",
     "docs/SECURITY.md": "f841bde359457209dde9b6cfc6653ca7bef98da30ed34932eb84dca3bc6e5ef7",
     "package.json": "bfd0129038148525e42d6368c5510b7ce42c89c87a343cd3547b9f367a2a6fa4",
     "scripts/build-hello-plugin.mjs": "af53fd627191f28d60b579e0ddd9c701284bd79e388c7114723e939c2ab90f04",
