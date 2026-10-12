@@ -94,6 +94,9 @@ export interface PluginManifest {
     clipboard?: boolean
     notification?: boolean
     account?: boolean              // 账号能力（v2.5 增量）：声明后 host.account 返回真实登录态；未声明恒 null
+    customers?: boolean            // 客户能力域（v2.5.1 A1）：声明后 host.customer.* 接通；未声明 → 抛 PERMISSION_DENIED（读方法亦抛，默认关）
+    suppliers?: boolean            // 供应商能力域（v2.5.4 弹一 C-1）：声明后 host.supplier.* 接通；报价读与客户同一位（C-2 拍板），不另立位
+    share?: boolean                // 分享/证书能力域：声明后 host.share.* 接通；未声明 → 抛 PERMISSION_DENIED（默认关）
     workspace?: boolean            // workspace 能力域（2026-10-12 B18）：声明后 host.workspace.list()（最近工作区枚举）放行；
                                    // 未声明 → list() 抛 PERMISSION_DENIED（默认关）。currentPath()/defaultPath?() 恒可用不受门控
   }
@@ -140,7 +143,7 @@ export interface PluginManifest {
 6. `permissions.network` 域名须为合法主机名或 `'*'`（`'*'` 须附说明，管理页醒目展示） <!-- contract:v1:manifest.rule6 -->
 7. `activation` 中 `onEvent:<channel>` 的 channel 必须以本插件 `ipcPrefix` 开头 <!-- contract:v1:manifest.rule7 -->
 8. `syncScope` 仅支持缺省（默认 `'local'`）、`'global'` 或 `'local'`；其余值 → broken（v2.5 增量） <!-- contract:v1:manifest.rule8 -->
-9. `permissions` 子字段类型校验：`account` / `clipboard` / `notification` / `workspace` 布尔、`network` 字符串数组或 `'*'`；非法 → broken（v2.5 增量；`workspace` 为 2026-10-12 B18 增量） <!-- contract:v1:manifest.rule9 -->
+9. `permissions` 子字段类型校验：`account` / `clipboard` / `notification` / `customers` / `suppliers` / `share` / `workspace` 布尔、`network` 字符串数组或 `'*'`；非法 → broken（v2.5 增量；`workspace` 为 2026-10-12 B18 增量；`customers`/`suppliers`/`share` 为 2026-10-12 夜批对齐 host.ts 既有门控补登——代码先于文档存在，非新能力） <!-- contract:v1:manifest.rule9 -->
 10. `commands[].openPage`（可选）三边校验：非空字符串 / `'/plugin/'` 前缀 / 必须命中本插件 `pages[].path`；非法 → broken（v2.5.9 增量） <!-- contract:v1:manifest.rule10 -->
 
 ---
