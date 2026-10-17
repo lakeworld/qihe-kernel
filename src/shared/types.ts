@@ -189,6 +189,20 @@ export interface SubfolderEntry {
   has_files: boolean
 }
 
+/**
+ * 2026-10-16（按页归位导入 · 批1）：单据资料区的三个域。
+ *
+ * 为什么单开一个类型而不是往 `ImportFileRequest.scope` 里加三个值：`scope` 的语义是
+ * 「哪个**实体**域」，它的三值在 `files.ts` 里有六处消费者（listSubfolders / fileList /
+ * builtinNotesDir / moveFiles / targetDir …），每处都写 `scope === 'customer' ? 客户名称 : … : '产品集'`
+ * 这样的三元回落。加值 = 这六处同时获得"落进产品集分支"的新错法（不报错、静默拼错路径），
+ * 而单据区根本没有实体名可承载。⇒ 新维度另开字段，`scope` 一字不动。
+ *
+ * 落点口径 = `core/subfolders.ts` 的 `docAreaDir`（唯一寻址口），与交换区归档同一条拼法
+ * （`exchange.ts:426-427` 取日期前 4 位年段）。
+ */
+export type DocArchiveArea = 'quote' | 'invoice' | 'inbound'
+
 export interface ImportFileRequest {
   source_paths: string[]
   target_product_set: string
@@ -197,6 +211,19 @@ export interface ImportFileRequest {
   sub_folder: string
   /** v2.4.7：scope 语义同 FileListRequest；'customer' 时 target_product_set 槽位承载客户名、file_type 忽略；'supplier'（v2.4.9 S2）同构（供应商名） */
   scope?: 'productSet' | 'customer' | 'supplier'
+  /**
+   * 2026-10-16（批1）：单据区导入（报价/发票/入库）。**给了 area 就当 area 优先**——
+   * 此时 `scope` / `target_product_set` / `target_type` / `sub_folder` 四个槽位全部不参与寻址，
+   * 渲染层一律传空串（空值在 `composeTargetName` 里天然跳过 ⇒ 文件名回落成 `原名_编号`，
+   * 不会把年份硬塞进文件名）。
+   */
+  area?: DocArchiveArea
+  /**
+   * 2026-10-16（批1）：area 专用的年份段（4 位数字，落 `区/<YYYY>/`）。
+   * 缺省 = 主进程按当前年补（拖进来的文件没有单据日期可依）；给了非 4 位数字一律报错，
+   * 不做"猜一个"——静默纠段正是本批要防的那种漂移。后续 AI 认单据那一批会把单据日期填进来。
+   */
+  year?: string
   /** v2.3.0：批量导入取消标记（GlobalDropOverlay 生成，主进程轮询检测） */
   cancelToken?: string
 }

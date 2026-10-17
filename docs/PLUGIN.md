@@ -362,7 +362,7 @@ export interface PluginRegistration {
 }
 ```
 
-**IPC 返回值约定（v2.5.4 起）**：handler 返回值若已是 `{ success: boolean, error?, data? }` 形状（ApiResult），宿主**透传不重复包装**（调用侧得到单层信封）；其余任意 payload 由宿主统一装 `{success:true, data:<payload>}`。需要「业务失败不熔断」的插件：请在 handler 内自行捕获预期失败并返回 `{success:false, error:{code,message}}`，**不要 throw**（throw 计入宿主熔断计数，见 §2.3.2）。
+**IPC 返回值约定（v2.5.4 起）**：handler 返回值若已是 `{ success: boolean, error?, data? }` 形状（ApiResult），宿主**按 `success` 布尔透传不重复包装**（调用侧得到单层信封）；其余任意 payload 由宿主统一装 `{success:true, data:<payload>}`。需要「业务失败不熔断」的插件：请在 handler 内自行捕获预期失败并返回 `{success:false, error:{code,message}}`，**不要 throw**（throw 计入宿主熔断计数，见 §2.3.2）。`error` 字段的契约类型是字符串：写成 `{code,message}` 对象时宿主（v2.7.1 起）降成「message（code）」一句可读文本再出口，别指望原对象在渲染层显示得出来。归一**只动 `error` 这一个字段**，失败信封的其余顶层键原样出门——平铺 `{success:false, code, message}` 那类动作处理器（以及 `needAdopt` 这类附键）渲染层读的就是它们，宿主不许在门口把它们重铸掉。
 
 <!-- contract:v1:registration.ipc -->
 <!-- contract:v1:registration.api-result-passthrough -->
